@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>larpo</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #111;
+        overflow: hidden;
+        font-family: sans-serif;
+      }
+
+      .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        perspective: 1000px;
+      }
+
+      .text-wrapper {
+        user-select: none;
+        position: relative;
+        width: fit-content;
+        height: fit-content;
+        transform-style: preserve-3d;
+      }
+
+      .layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 20vw;
+        font-weight: bold;
+        will-change: transform;
+        transform-style: preserve-3d;
+        pointer-events: none;
+      }
+
+      .layer.front {
+        color: white;
+        text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+      }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="text-wrapper" id="textWrapper"></div>
+</div>
+
+<script>
+    const text = 'larpo';
+    const layers = 20;
+    const textWrapper = document.getElementById('textWrapper');
+
+    // Create depth layers
+    for (let i = layers - 1; i >= 0; i--) {
+        const div = document.createElement('div');
+        div.classList.add('layer');
+        if (i === 0) div.classList.add('front');
+        div.textContent = text;
+        div.style.transform = `translateZ(${-i}px)`;
+        div.style.color = `hsl(0, 0%, ${100 - i * 2}%)`;
+        textWrapper.appendChild(div);
+    }
+
+    let targetX = 0, targetY = 0;
+    let currentX = 0, currentY = 0;
+    const maxRotate = 15;
+
+    // Mouse movement (desktop)
+    document.addEventListener('mousemove', (e) => {
+        const xRatio = (e.clientX / window.innerWidth - 0.5) * 2;
+        const yRatio = (e.clientY / window.innerHeight - 0.5) * 2;
+        targetX = xRatio;
+        targetY = yRatio;
+    });
+
+    // Device orientation (mobile)
+    if (window.DeviceOrientationEvent) {
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            document.body.addEventListener('click', () => {
+                DeviceOrientationEvent.requestPermission().then(permissionState => {
+                    if (permissionState === 'granted') {
+                        window.addEventListener('deviceorientation', handler, true);
+                    }
+                });
+            }, { once: true });
+        }
+
+        window.addEventListener('deviceorientation', (event) => {
+            // gamma = left/right (-90 to 90)
+            // beta = front/back (-180 to 180)
+            const gamma = event.gamma || 0;
+            const beta = event.beta || 0;
+
+            // Normalize gamma and beta to [-1, 1]
+            targetX = Math.max(-1, Math.min(1, gamma / 30));
+            targetY = Math.max(-1, Math.min(1, beta / 30));
+        }, true);
+    }
+
+    function animate() {
+        currentX += (targetX - currentX) * 0.1;
+        currentY += (targetY - currentY) * 0.1;
+
+        const rotateY = currentX * maxRotate;
+        const rotateX = -currentY * maxRotate;
+
+        textWrapper.style.transform = `
+        rotateX(${rotateX}deg)
+        rotateY(${rotateY}deg)
+      `;
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+</script>
+</body>
+</html>
